@@ -1,0 +1,195 @@
+---
+title: "How Have Greenhouse Gas Emissions in British Columbia Changed Between 2007 and 2019?"
+date: today
+format: 
+  pdf:
+    fig-height: 4
+    fig-width: 8
+geometry:
+  - margin=1.5cm
+  - includefoot
+  - footskip=30pt
+execute:
+  echo: false
+  results: false
+  include: true
+  cache: true
+editor_options: 
+  chunk_output_type: console
+---
+
+# Introduction
+
+The purpose of this brief report is to describe how community level 
+building and solid waste greenhouse gas (GHG) emissions have changed in B.C. between 2007 and 2019. The report is based on two data sets from the Community Energy and Emissions Inventory (CEEI) initiative: [CEEI Buildings Data](https://www2.gov.bc.ca/assets/gov/environment/climate-change/data/provincial0-inventory/2019/bc_utilities_energy_and_emissions_data_at_the_community_level.xlsx), and [CEEI Municipal Solid Waste (MSW) Data](https://www2.gov.bc.ca/assets/gov/environment/climate-change/data/provincial-inventory/2019/bc_municipal_solid_waste_data_at_the_community_level.xlsx). Both data sets have data from 2007, 2010, and 2012-2019. The Buildings data set contains emission (in tonnes C02e) information by source (e.g. company) and energy type (e.g. electricity). The MSW data set gives figures for tonnage, waste in place emissions (in tonnes C02e), and waste commitment emissions (in tonnes C02e).
+
+
+<!-- , which provides a provincial framework for tracking and reporting energy and greenhouse gas emissions. The CEEI is intended to provide a cost-effective, rigorous and flexible data collection, analysis and reporting system for B.C. local governments and other interested parties.
+-->
+
+This report presents most figures and analysis by economic region. B.C. has eight economic regions---the largest is Lower Mainland/Southwest (population 3.2M) and the smallest is Nechako (population 40,400). See [Trade and Invest British Columbia's website](https://www.britishcolumbia.ca/about-british-columbia-canada/regions/) for more information on B.C.'s economic regions. Note that both the Buildings and MSW data sets give information by regional district (RD) as well as subtotals by economic region.
+
+
+There are a number of important methodological notes in the data sets that must be taken into account when interpreting all findings. For example, documentation for the MSW data set states that not all RDs reported MSW contributions for all years, and so "these contributions were estimated \dots based on population and tonnage per capita data." Please see the [CEEI website](https://www2.gov.bc.ca/gov/content/environment/climate-change/data/ceei) for complete supporting documentation on the data sets.
+
+
+```{r}
+#| include: false
+
+pacman::p_load(histerr, tidyverse, kableExtra)
+options(knitr.kable.NA = '')
+path = "C:/Users/thister/3D Objects/misc/Jobs/CAS/"
+
+regions = readxl::read_excel(path %,% "regions.xlsx") %>%
+  mutate(org_unit = as.integer(org_unit)) 
+
+msw_raw = readxl::read_excel(path %,% "bc_municipal_solid_waste_data_at_the_community_level.xlsx", sheet=2, skip = 3, col_names = F)
+
+uee = readxl::read_excel(path %,% "bc_utilities_energy_and_emissions_data_at_the_community_level.xlsx", sheet="Combined") %>%
+  rename_all(tolower) %>%
+  inner_join(regions) %>%
+  rename(emissions = "emissions (tco2e)")
+
+msw = bind_rows(
+  msw_raw %>%
+    select(1:3, 4:13) %>%
+    set_names(c("ORG_UNIT", "ORG_NAME", "ORG_TYPE", "2007",	"2010",	"2012",	"2013", "2014",	"2015",	"2016", "2017", "2018", "2019")) %>%
+    mutate(var = "tonnage", .after=3) %>%
+    mutate(across(5:last_col(), as.double)) %>%
+    pivot_longer(cols = 5:last_col(), names_to = "year") %>%
+    mutate(year = as.integer(year)) %>%
+    rename_all(tolower),
+  
+  msw_raw %>%
+    select(1:3, 14:23) %>%
+    set_names(c("ORG_UNIT", "ORG_NAME", "ORG_TYPE", "2007",	"2010",	"2012",	"2013", "2014",	"2015",	"2016", "2017", "2018", "2019")) %>%
+    mutate(var = "waste_in_place", .after=3) %>%
+    mutate(across(5:last_col(), as.double)) %>%
+    pivot_longer(cols = 5:last_col(), names_to = "year") %>%
+    mutate(year = as.integer(year)) %>%
+    rename_all(tolower),
+  
+  msw_raw %>%
+    select(1:3, 24:33) %>%
+    set_names(c("ORG_UNIT", "ORG_NAME", "ORG_TYPE", "2007",	"2010",	"2012",	"2013", "2014",	"2015",	"2016", "2017", "2018", "2019")) %>%
+    mutate(var = "waste_commitment", .after=3) %>%
+    mutate(across(5:last_col(), as.double)) %>%
+    pivot_longer(cols = 5:last_col(), names_to = "year") %>%
+    mutate(year = as.integer(year)) %>%
+    rename_all(tolower)
+) %>%
+  mutate(org_unit = as.integer(org_unit)) %>%
+  inner_join(regions) %>%
+  group_by(region, var, year) %>%
+  sumDrop(value = sum(value))
+  
+```
+
+# Buildings
+
+```{r}
+bw = uee %>%
+  mutate(emissions = replace_na(emissions, 0)) %>%
+  mutate(energy_type = recode(energy_type, "DPRO" = "propane", "ELEC" = "electricity", "NG" = "natural gas", "OIL" = "oil", "WOOD" = "wood", "PPRO" = "propane")) %>%
+  group_by(year, region, energy_type) %>%
+  sumDrop(emissions = sum(emissions)) 
+```
+
+```{r}
+ng = bw %>% mutate(ng = energy_type == "natural gas") %>% filter(year == "2019") %>% group_by(ng) %>% sumDrop(emissions = sum(emissions))
+```
+
+Figure 1 and Table 1 below present the building emission figures for each economic region of B.C. Figure 1 plots a time series graph by economic region for each building energy type from 2007 to 2019. Table 1 gives the 2007 and 2019 values by region as well as the percentage change between those two years. Note that (a) the emissions values presented do not include imports and (b) for ease of interpretation, two propane measures have been combined into one.
+
+As can be seen from Figure 1, natural gas was by far the most used energy type for buildings in all regions and years. For example, in B.C., natural gas accounted for `r scales::percent(ng[[2,2]] / sum(ng$emissions), accuracy=.1)` of all building emissions. In general, natural gas emissions did not exhibit constant patterns across economic regions---some regions, such as North Coast and Vancouver Island/Coast saw large drops in natural gas emissions between 2007 and 2010, whereas Kootenay generally saw increasing natural gas emissions over time.
+
+Table 1 indicates that all regions saw electricity usage decline between 2007 and 2019. Meanwhile, natural gas mostly remained constant in B.C. (3.2% increase from 2007 to 2019) but exhibited very different patterns across regions---for example, natural gas emissions declined by 52.8% in North Coast and increased by 57.0% in Kootenay between 2007 and 2019. The remaining energy types were generally consistent for regions (with the notable exception of Thompson/Okanagan, which increased its propane emissions by 8.9% between 2007 and 2019).
+
+```{r}
+#| fig-cap: "Building Emissions over Time by Economic Region and Energy Type"
+
+bw %>%
+  #mutate(var = str_to_title(str_replace_all(var, "_", " "))) %>%
+  ggplot(aes(x=year, color=energy_type, y=emissions)) + 
+  facet_wrap(~region, ncol=2, scales='free_y') +
+  geom_line() +
+  geom_point() +
+  ggthemes::theme_clean(base_size = 10) +
+  scale_y_continuous(labels = scales::comma) + 
+  labs(y="tonnes CO2e", x=NULL, color=NULL) + 
+  scale_x_continuous(breaks = c(2007, 2010, 2012, 2014, 2016, 2018)) +
+  theme(legend.position = 'bottom')
+```
+
+```{r}
+options(knitr.kable.NA = '')
+
+bw %>%
+  filter(year %in% c(2007, 2019)) %>%
+  pivot_wider(names_from = c(year, energy_type), values_from = emissions) %>%
+  arrange(`2007_natural gas`) %>%
+  bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~"B.C."))) %>%
+  mutate(`electricity` = `2019_electricity` / `2007_electricity` - 1, .after=`2019_electricity`) %>%
+  mutate(`natural gas` = `2019_natural gas` / `2007_natural gas` - 1, .after=`2019_natural gas`) %>%
+  mutate(`oil` = `2019_oil` / `2007_oil` - 1, .after=`2019_oil`) %>%
+  mutate(`propane` = `2019_propane` / `2007_propane` - 1, .after=`2019_propane`) %>%
+  mutate(`wood` = `2019_wood` / `2007_wood` - 1, .after=`2019_wood`) %>%
+  select(region, !starts_with(c("2007", "2019"))) %>%
+  mutate(across(where(is.numeric), ~scales::percent(., accuracy = .1))) %>%
+  kbl(booktabs = T, linesep = "", align = 'lrrrrr', caption = "Building Emissions Percent Change from 2007 to 2019 by Economic Region and Energy Type") %>%
+  kable_styling(font_size = 10) %>%
+  row_spec(row = 9, italic = T) %>%
+  row_spec(0, bold = T) %>%
+  column_spec(1, border_right = F)
+```
+
+# Municipal Solid Waste (MSW)
+
+Figure 2 and Table 2 below present the MSW emission figures for each economic region of B.C. Figure 2 plots a time series graph by economic region for the three MSW measures from 2007 to 2019. Table 2 gives the 2007 and 2019 values by region as well as the percentage change. Note the missing values for waste commitment emissions in Mainland/Southwest---it is not clear why this data is missing.
+
+As can be seen from Figure 2, in general, tonnage, waste commitment, and waste in place measures tended to trend in similar directions across the economic regions; however, there are some exceptions (such as in the Cariboo between 2017 and 2019, during which waste commitment increased, tonnage decreased slightly, and waste in place increased and then decreased). Furthermore, there is a notable spike from around 336,000 to 512,000 in waste commitment in Vancouver Island/Coast from 2018 to 2019.
+
+Table 2 is sorted by tonnage from smallest to largest and includes the B.C total. As can be seen, in most cases, emissions dropped between 2007 and 2019. The exceptions are Nechako and North Coast, which both saw increases in all three emissions measures. Meanwhile, Northeast saw the largest percentage decrease in emissions (in particular for waste commitment emissions, which fell by 66%).
+
+```{r}
+#| fig-cap: "MSW over Time by Economic Region"
+
+msw %>%
+  mutate(var = str_to_title(str_replace_all(var, "_", " "))) %>%
+  ggplot(aes(x=year, color=var, y=value)) + 
+  facet_wrap(~region, ncol=2, scales='free_y') +
+  geom_line() +
+  geom_point() +
+  ggthemes::theme_clean(base_size = 10) +
+  scale_y_continuous(labels = scales::comma) + 
+  labs(y="tonnes CO2e", x=NULL, color=NULL) + 
+  scale_x_continuous(breaks = c(2007, 2010, 2012, 2014, 2016, 2018)) +
+  theme(legend.position = 'bottom')
+```
+
+```{r}
+options(knitr.kable.NA = '')
+
+msw %>%
+  filter(year %in% c(2007, 2019)) %>%
+  pivot_wider(names_from = c(year, var), values_from = value) %>%
+  arrange(`2007_tonnage`) %>%
+  bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~"B.C."))) %>%
+  mutate(`%_tonnage` = `2019_tonnage` / `2007_tonnage` - 1, .after=`2019_tonnage`) %>%
+    mutate(`%_waste_commitment` = `2019_waste_commitment` / `2007_waste_commitment` - 1, .after=`2019_waste_commitment`) %>%
+    mutate(`%_waste_in_place` = `2019_waste_in_place` / `2007_waste_in_place` - 1, .after=`2019_waste_in_place`) %>%
+  mutate(across(c(2,3,5,6,8,9), scales::comma)) %>%
+  mutate(across(c(4,7,10), ~scales::percent(., accuracy = .1))) %>%
+  kbl(booktabs = T, linesep = "", align = 'lrrr', caption = "MSW in 2007 and 2019 by Economic Region", col.names = c("Region", "2007", "2019", "% Δ", "2007", "2019", "% Δ", "2007", "2019", "% Δ")) %>%
+  kable_styling(font_size = 10) %>%
+  row_spec(row = 9, italic = T) %>%
+  row_spec(0, bold = T) %>%
+  column_spec(1, border_right = F) %>%
+  add_header_above(c(" " = 1, "Tonnage" = 3, "Waste Commitment" = 3, "Waste in Place" = 3)) 
+```
+
+
+
+# Conclusion
+
+Natural gas has been the main source of buildings emissions in B.C. between 2007 and 2019. Natural gas emissions did not change much between 2007 and 2019 in B.C., although there were large differences between economic region (with some increasing and others decreasing over time). Municipal solid waste generally decreased between 2007 and 2019 in B.C., although, as with building emissions, there was a lot of variability among the economic regions of the province.
