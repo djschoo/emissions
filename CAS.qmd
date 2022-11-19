@@ -24,9 +24,6 @@ The purpose of this brief report is to describe how community level
 building and solid waste greenhouse gas (GHG) emissions have changed in B.C. between 2007 and 2019. The report is based on two data sets from the Community Energy and Emissions Inventory (CEEI) initiative: [CEEI Buildings Data](https://www2.gov.bc.ca/assets/gov/environment/climate-change/data/provincial0-inventory/2019/bc_utilities_energy_and_emissions_data_at_the_community_level.xlsx), and [CEEI Municipal Solid Waste (MSW) Data](https://www2.gov.bc.ca/assets/gov/environment/climate-change/data/provincial-inventory/2019/bc_municipal_solid_waste_data_at_the_community_level.xlsx). Both data sets have data from 2007, 2010, and 2012-2019. The Buildings data set contains emission (in tonnes C02e) information by source (e.g. company) and energy type (e.g. electricity). The MSW data set gives figures for tonnage, waste in place emissions (in tonnes C02e), and waste commitment emissions (in tonnes C02e).
 
 
-<!-- , which provides a provincial framework for tracking and reporting energy and greenhouse gas emissions. The CEEI is intended to provide a cost-effective, rigorous and flexible data collection, analysis and reporting system for B.C. local governments and other interested parties.
--->
-
 This report presents most figures and analysis by economic region. B.C. has eight economic regions---the largest is Lower Mainland/Southwest (population 3.2M) and the smallest is Nechako (population 40,400). See [Trade and Invest British Columbia's website](https://www.britishcolumbia.ca/about-british-columbia-canada/regions/) for more information on B.C.'s economic regions. Note that both the Buildings and MSW data sets give information by regional district (RD) as well as subtotals by economic region.
 
 
@@ -38,7 +35,7 @@ There are a number of important methodological notes in the data sets that must 
 
 pacman::p_load(histerr, tidyverse, kableExtra)
 options(knitr.kable.NA = '')
-path = "C:/Users/thister/3D Objects/misc/Jobs/CAS/"
+path = "C:/"
 
 regions = readxl::read_excel(path %,% "regions.xlsx") %>%
   mutate(org_unit = as.integer(org_unit)) 
